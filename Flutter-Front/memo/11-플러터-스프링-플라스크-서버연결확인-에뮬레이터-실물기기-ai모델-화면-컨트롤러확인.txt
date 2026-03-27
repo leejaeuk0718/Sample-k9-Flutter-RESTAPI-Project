@@ -1,0 +1,1029 @@
+#플러터 #모바일개발
+
+스프링 서버 연동 작업3, 
+
+앞(플러터)<->백(스프링부트)<->레스트 API(플라스크 서버)
+
+준비물:
+1)플러터
+화면 제공, http 통신연결, jwt 인증이용, 
+https://github.com/lsy3709/Flutter_Test_Busanit501
+
+2)스프링부트
+시큐리티 설정, jwt 인증, 마리아디비연결, JPA(ORM)
+https://github.com/lsy3709/Server501_Test/tree/main/SpringBasic/api5012
+
+3)플라스크(AI 모델 탑재
+분류,
+동물상(1),폐가전(2),공구툴(3),해양동물(4)
+https://github.com/lsy3709/ResNet50_Flask_REST_SAMPLE_3
+
+검사는 
+역순, 
+3) 플라스크, 포스트맨으로 동작 여부 확인. 
+
+커밋의 위치를 변경. 
+- 병렬성/성능을 위해 ThreadPoolExecutor 변경 , 위치로 
+현재 브랜치를 여기로 재설정, 하드 선택. 
+- 인터프리터, 파이토치가 설치가된 가상환경 선택. 
+- flask run 실행.
+
+포스트맨으로 검사. 
+
+동물상
+- post 지정, 
+- 주소 : http://localhost:5000/predict/team1
+- Body -> form-data 선택, 
+- key : image , 값 : 로컬의 이미지를 선택, 
+- send 
+
+폐가전 분류
+- post 지정, 
+- 주소 : http://localhost:5000/predict/team2
+- Body -> form-data 선택, 
+- key : image , 값 : 로컬의 이미지를 선택, 
+- send 
+
+공구 분류
+- post 지정, 
+- 주소 : http://localhost:5000/predict/team3
+- Body -> form-data 선택, 
+- key : image , 값 : 로컬의 이미지를 선택, 
+- send 
+
+yolov8 기본 아쿠리아리움 모델 분류
+- post 지정, 
+- 주소 : http://localhost:5000/predict/yolo
+- Body -> form-data 선택, 
+- key : image , 값 : 로컬의 이미지를 선택, 
+- send 
+
+
+2) 스프링 부트 -> 플라스크 서버  레스트 API 연결 확인. 
+
+포스트맨으로 검사. 
+포스트맨 ->(인증 jwt) 스프링부트 -> 플라스크 서버
+
+동물상
+- post 지정, 
+- 주소 : http://localhost:8080/api/ai/predict/1
+- Body -> form-data 선택, 
+- key : image , 값 : 로컬의 이미지를 선택, 
+- send 
+추가 인증 
+- 2번째 탭 Authorization , Bearer Token, 
+액세스 토큰 입력. 
+
+결과를 확인함. 
+
+
+참고, 
+
+기능 확인
+시스템이 jwt 토큰 인증 형식으로 되어서, 
+
+인증 확인 방법. 
+
+포스트맨으로 
+
+메소드 : post 
+주소 : http://localhost:8080/generateToken
+raw -> json 형식으로 
+예시)
+{
+    "mid" : "lsy",
+    "mpw" : "1234"
+}
+디비서버에 유저가 있다면, 바로 액세스 토큰 응답 받으면 됨. 
+{
+    "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJtaWQiOiJsc3kiLCJpYXQiOjE3NDM3Mjc1MzMsImV4cCI6MTc0MzgxMzkzM30.Q0uDAe6Vj_xbeGShOrNb4ZqxsiBNcG3we9HNsFXA2Tk",
+    "refreshToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJtaWQiOiJsc3kiLCJpYXQiOjE3NDM3Mjc1MzMsImV4cCI6MTc0NjMxOTUzM30.ind07fYJQNOTaX4Nh0Cy_nJAuKOQDNUC24t6X6fdTi8"
+}
+
+2
+
+포스트맨으로 
+
+메소드 : post 
+주소 : http://localhost:8080/member/register
+raw -> json 형식으로 
+
+회원 가입 필요할 경우. 
+
+{
+    "mid" :"lsy",
+    "mpw" : "1234"
+}
+
+1) 플러터 -> 스프링부트 연결 확인 
+
+플러터 작업
+(메인에 버튼 추가, ai 테스트 환경 간단한 화면 구성, 로직처리)
+현재 작업 폴더 
+1)
+main.dart : 프로바이더 등록 하는 공간, 메인 함수, 
+2)
+my_app_routing.dart : 라우팅 설정, 앱 시작시 초기 화면 설정, 
+스플래쉬 화면에서  3초 머물다가 -> 메인 화면으로 이동
+3)
+sample_routing ->  todos_test -> screen ai_test -> screen
+todos_main_screen.dart : 메인화면, 버튼으로 각 화면 이동. 
+
+
+- 메인에 버튼 추가
+
+여기에 ai 화면으로 이동하는 버튼 추가 할 예정. 
+기존 코드 확인. 
+... 중략, 
+//추가한 코드만 표기. 
+if (loginController.isLoggedIn)
+OutlinedButton(
+onPressed: () => Navigator.pushNamed(context, '/aiTest'),
+child: const Text('ai 연동 테스트'),
+),
+
+- 화면 
+sample_routing -> ai_test -> screen
+ai_test_screen.dart 
+만들어 둔 파일 복붙 후, 코드 리뷰 하기. 
+
+
+- 컨트롤러 
+sample_routing -> ai_test -> controller
+ai_controller.dart 
+만들어 둔 파일 복붙 후, 코드 리뷰 하기. 
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+
+
+class AiImageController extends ChangeNotifier {
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  File? selectedImage; // 선택한 이미지 파일
+  bool isLoading = false; // 로딩 상태
+  Map<String, dynamic>? predictionResult; // 예측 결과 저장
+  int selectedModel = 1; // ✅ 기본 모델 (동물상 테스트)
+  File? selectedMedia; // ✅ 선택한 이미지 또는 동영상 파일
+
+  // ✅ 저장된 `accessToken` 가져오기
+  Future<String?> getAccessToken() async {
+    return await secureStorage.read(key: "accessToken");
+  }
+
+  // ✅ 모델 선택 변경
+  void setModel(int model) {
+    selectedModel = model;
+
+    // ✅ YOLOv8 이미지 테스트일 경우에만 소켓 재연결
+    if (selectedModel == 4 || selectedModel == 5) {
+
+    } else {
+
+    }
+
+    notifyListeners();
+  }
+
+  /// ✅ 갤러리 또는 카메라에서 이미지 또는 동영상 선택
+  Future<void> pickMedia(ImageSource source, {bool isVideo = false}) async {
+
+    final pickedFile = isVideo
+        ? await ImagePicker().pickVideo(source: source)
+        : await ImagePicker().pickImage(source: source);
+
+    if (pickedFile == null) return;
+
+    if (isVideo) {
+      selectedMedia = File(pickedFile.path);
+      // selectedImage = null; // ✅ 동영상 선택 시 이미지 초기화
+    } else {
+      selectedImage = File(pickedFile.path);
+      selectedMedia = File(pickedFile.path);
+      // selectedMedia = null; // ✅ 이미지 선택 시 동영상 초기화
+    }
+
+    notifyListeners();
+  }
+
+  // ✅ 서버로 이미지 또는 동영상 업로드 및 예측 요청
+  Future<void> uploadMedia(BuildContext context) async {
+    // _connectToSocket();
+    if (selectedMedia == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("파일을 선택해주세요!")),
+      );
+      return;
+    }
+
+    isLoading = true;
+    notifyListeners();
+
+    String? accessToken = await getAccessToken(); // 🔹 토큰 가져오기
+    if (accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("로그인이 필요합니다.")),
+      );
+      isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      int apiModel = (selectedModel == 5) ? 4 :selectedModel;
+      // ✅ 선택한 모델에 따라 서버 API 주소 변경
+      // String apiUrl = "http://192.168.219.103:8080/api/ai/predict/$apiModel";
+      String apiUrl = "http://10.100.201.87:8080/api/ai/predict/$apiModel";
+
+      var request = http.MultipartRequest(
+        "POST",
+        Uri.parse(apiUrl),
+      );
+      request.headers["Authorization"] = "Bearer $accessToken"; // ✅ 토큰 추가
+
+      request.files.add(
+        // await http.MultipartFile.fromPath(isVideo ? "video" : "image", selectedMedia!.path),
+        await http.MultipartFile.fromPath("image", selectedMedia!.path),
+      );
+
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+
+      print("📩 서버 응답 코드: ${response.statusCode}");
+      print("📩 서버 응답 본문: $responseBody");
+
+      try {
+        var jsonResponse = json.decode(responseBody);
+
+        if (response.statusCode == 200) {
+          print("✅ 서버 응답 정상 수신!");
+          predictionResult = jsonResponse;
+
+
+        } else {
+          print("❌ 서버 오류: ${jsonResponse['error']}");
+          throw Exception("서버 오류: ${jsonResponse['error']}");
+        }
+      } catch (e) {
+        print("❌ JSON 파싱 오류: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("예측 실패: 응답 데이터를 처리하는 중 오류 발생! $e")),
+        );
+      }
+    } catch (e) {
+      String errorMessage = e.toString().contains("server")
+          ? "서버 오류 발생! 관리자에게 문의하세요."
+          : "예측 실패: $e";
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+
+      print("❌ 오류 발생: $errorMessage");
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+}
+
+
+
+- 프로바이더 메인에 등록, 
+
+void main() {
+  // runApp(MyApp());
+  // 프로바이더 등록 작업,
+  // runApp(MyAppRouting());
+  runApp(
+    MultiProvider(
+        providers: [
+          ...
+          ChangeNotifierProvider(create: (context) => AiImageController())
+        ],
+    child: const MyAppRouting(),)
+  );
+}
+
+
+- 라우팅 작업, 
+class MyAppRouting extends StatelessWidget {
+  const MyAppRouting({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      // 시작 하는 화면을, 스플래쉬 화면으로 교체,
+      home: const MySplashScreen2(),
+      //라우팅 준비물 1,
+      routes: {
+        ...
+        '/aiTest': (context) => AiImageScreen(),
+
+      },
+    );
+  }
+}
+
+- 필요한 라이브러리 설치, pubspec.yaml 등록. 
+예시)
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+#  사용할 외부 라이브러리 추가.
+  provider: ^6.0.5
+  http: ^0.13.6
+  dio: ^5.8.0+1
+  flutter_secure_storage: ^9.2.4 # 플러터의 내부 저장소(안전한 버전)
+  image_picker: ^1.0.4 # 이미지 선택 도구 
+  url_launcher: ^6.3.1
+추가 라이브러리 설치. 
+url_launcher: ^6.3.1
+
+오른쪽 상된 Pub get 적용하기. 
+
+
+- 이미지 미리보기 화면 부분 추가. 
+sample_routing -> ai_test -> screen
+
+ai_preview_screen.dart 
+
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+
+import '../controller/todos_login_controller.dart';
+
+class TodosMainScreen extends StatefulWidget {
+  const TodosMainScreen({super.key});
+
+  @override
+  State<TodosMainScreen> createState() => _TodosMainScreenState();
+}
+
+class _TodosMainScreenState extends State<TodosMainScreen> {
+  // 플러터 전용의 저장소에 접근 하는 도구, 가져오기, 설정하기.
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  String? userId;
+
+  // 최초에 화면을 그릴 때 동작함.
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  // 화면이 변경시 마다 호출.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserId(); // 로그아웃 후 다시 화면 열릴 때 호출됨
+  }
+
+
+  // 보안 저장소에서 로그인한 유저 ID 불러오기
+  Future<void> _loadUserId() async {
+    String? mid = await secureStorage.read(key: "mid"); // 저장된 ID 가져오기
+    // 리액트 비슷한 구조이고, 스테이트 상태가 변경이 되면, 화면도 같이 업데이트
+    setState(() {
+      userId = mid;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loginController = context.watch<LoginController>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('메인 화면'),
+          actions: [
+            // 로그인 상태일 때만 로그아웃 버튼 표시
+            if (loginController.isLoggedIn)
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () => loginController.showLogoutDialog(context),
+              ),
+          ]
+      ),
+
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Center(
+              child: Text(
+                userId != null ? "환영합니다, $userId님!" : "로그인이 필요합니다.",
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const Center(child: FlutterLogo(size: 100)),
+            const SizedBox(height: 20),
+            if (!loginController.isLoggedIn)
+            ElevatedButton(
+              //라우팅 2번 째 준비물,
+              onPressed: () => Navigator.pushNamed(context, '/signup'),
+              child: const Text('회원 가입'),
+            ),
+
+            if (!loginController.isLoggedIn)
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/login'),
+              child: const Text('로그인'),
+            ),
+
+            if (loginController.isLoggedIn)
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/pdtest1'),
+              child: const Text('공공데이터 연동1'),
+            ),
+            if (loginController.isLoggedIn)
+              OutlinedButton(
+                onPressed: () => Navigator.pushNamed(context, '/todos'),
+                child: const Text('todos 연동 리스트'),
+              ),
+            if (loginController.isLoggedIn)
+              OutlinedButton(
+                onPressed: () => Navigator.pushNamed(context, '/aiTest'),
+                child: const Text('ai 연동 테스트'),
+              ),
+
+          ],
+        ),
+      ),
+    );
+
+  }
+}
+
+주의사항, 
+1
+에뮬레이터로 테스트시 상관 없음. 
+주의사항, 
+접근 아이피: localhost-> 10.0.2.2 로 변경. 
+
+2
+실물 기기로 , 플라스크 서버의 내부의 이미지 업로드 저장소 접근시, 
+플라스크 서버를 실행시, 
+단순 : flask run 실행. 
+허용 가능한 아이피 : http://127.0.0.1:5000, 
+로컬에서만 접근이 허용이 됨. 
+
+실물기기(와이파이 IT501 접근.  아이피 : 
+10.100.201.18 
+
+플라스크 서버 아이피 : 
+10.100.201.87 
+
+실행 명령어를 변경. 
+
+모두 허용. 
+
+flask run --host=0.0.0.0 --port=5000
+=============================================
+
+추가, 
+디자인 샘플 확인, 2가지, 
+
+1
+라우팅
+D:\busanit501_flutter_test\lib\sample_routing\todos_test\screen\todos_main_screen.dart
+if (loginController.isLoggedIn)
+
+OutlinedButton(
+onPressed: () => Navigator.pushNamed(context, '/design_sample1'),
+child: const Text('디자인 샘플1 네비게이션 반응형'),
+),
+
+2
+화면, 
+
+D:\busanit501_flutter_test\lib\sample_routing\sample_design\navigation_mode_sample1.dart
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+class ResponsiveNavBarPage extends StatelessWidget {
+  ResponsiveNavBarPage({Key? key}) : super(key: key);
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final bool isLargeScreen = width > 800;
+
+    return Theme(
+      data: ThemeData.dark(),
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          titleSpacing: 0,
+          leading: isLargeScreen
+              ? null
+              : IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+          title: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  "Logo",
+                  style: TextStyle(
+                      color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+                if (isLargeScreen) Expanded(child: _navBarItems())
+              ],
+            ),
+          ),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: CircleAvatar(child: _ProfileIcon()),
+            )
+          ],
+        ),
+        drawer: isLargeScreen ? null : _drawer(),
+        body: const Center(
+          child: Text(
+            "Body",
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _drawer() => Drawer(
+    child: ListView(
+      children: _menuItems
+          .map((item) => ListTile(
+        onTap: () {
+          _scaffoldKey.currentState?.openEndDrawer();
+        },
+        title: Text(item),
+      ))
+          .toList(),
+    ),
+  );
+
+  Widget _navBarItems() => Row(
+    mainAxisAlignment: MainAxisAlignment.end,
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: _menuItems
+        .map(
+          (item) => InkWell(
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              vertical: 24.0, horizontal: 16),
+          child: Text(
+            item,
+            style: const TextStyle(fontSize: 18),
+          ),
+        ),
+      ),
+    )
+        .toList(),
+  );
+}
+
+final List<String> _menuItems = <String>[
+  'About',
+  'Contact',
+  'Settings',
+  'Sign Out',
+];
+
+enum Menu { itemOne, itemTwo, itemThree }
+
+class _ProfileIcon extends StatelessWidget {
+  const _ProfileIcon({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<Menu>(
+        icon: const Icon(Icons.person),
+        offset: const Offset(0, 40),
+        onSelected: (Menu item) {},
+        itemBuilder: (BuildContext context) => <PopupMenuEntry<Menu>>[
+          const PopupMenuItem<Menu>(
+            value: Menu.itemOne,
+            child: Text('Account'),
+          ),
+          const PopupMenuItem<Menu>(
+            value: Menu.itemTwo,
+            child: Text('Settings'),
+          ),
+          const PopupMenuItem<Menu>(
+            value: Menu.itemThree,
+            child: Text('Sign Out'),
+          ),
+        ]);
+  }
+}
+
+2번째, 탭 레이아웃 화면 샘플. 
+
+1
+라우팅. 
+'/design_sample2': (context) => MaterialHomePage(),
+
+2
+화면, 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+class MaterialHomePage extends StatefulWidget {
+  @override
+  _MaterialHomePageState createState() => _MaterialHomePageState();
+}
+
+class _MaterialHomePageState extends State<MaterialHomePage> {
+  int _selectedIndex = 0;
+
+  static const List<Widget> _pages = <Widget>[
+    Center(child: Text('홈 페이지')),
+    Center(child: Text('검색')),
+    Center(child: Text('설정')),
+  ];
+
+  void _onItemTapped(int index) {
+    if (index == 0) {
+      // 홈 아이콘 클릭 시 라우트 전환
+      Navigator.pushNamed(context, '/main');
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Material Navigation')),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.deepPurple,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: '검색'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
+        ],
+      ),
+    );
+  }
+}
+
+
+자주 사용하는 뷰 템플릿 형식, 
+이중 리스트, 리스트 안에 리스트 구조, 
+
+1
+라우팅.
+'/design_sample3': (context) => Sample3ListOfListView(),
+
+2
+버튼 화면. 
+if (loginController.isLoggedIn)
+OutlinedButton(
+onPressed: () => Navigator.pushNamed(context, '/design_sample3'),
+child: const Text('디자인 샘플3 리스트 안에 리스트 뷰 화면 샘플'),
+),
+
+3
+샘플 화면. 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+class Sample3ListOfListView extends StatelessWidget {
+  const Sample3ListOfListView({super.key});
+  ////////////////////////////////////////////
+  void _showSnackBar(BuildContext context) {
+    final snackBar = SnackBar(
+      content: Text('스낵바가 표시되었습니다!!!!!!'),
+
+      // 스낵바 안에 표시할 텍스트
+      duration: Duration(seconds: 3),
+
+      // 스낵바가 화면에 표시되는 시간
+      backgroundColor: Colors.indigo,
+
+      // 배경색 지정
+      behavior: SnackBarBehavior.fixed,
+
+      // fixed 또는 floating 설정 가능
+      elevation: 6.0,
+
+      // 그림자 깊이 (부유 느낌)
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8.0), // 모서리 둥글게
+      ),
+
+      action: SnackBarAction(
+        label: '클릭', // 버튼 텍스트
+        textColor: Colors.yellow, // 텍스트 색상
+
+        onPressed: () {
+          // 클릭 이벤트 처리: 예를 들어 로그 출력
+          print('SnackBar의 클릭 액션 실행됨');
+        },
+      ),
+    );
+
+    // ScaffoldMessenger를 통해 현재 context에 SnackBar 표시
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  ////////////////////////////////////////////
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      //오른쪽 상단의 디버그 화면을 제거
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        // 이 위치에 플로팅 액션 버튼을 위치 하기.
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            // 버튼 클릭 시 실행할 코드
+          },
+          child: Icon(Icons.add),
+          // 버튼 내부 아이콘
+          backgroundColor: Colors.blue,
+          // 배경색
+          tooltip: '추가',
+          // 툴팁 텍스트 (길게 누를 때 표시)
+          elevation: 6.0, // 그림자 깊이
+        ),
+        // floatingActionButtonLocation: FloatingActionButtonLocation.centerTop,
+        body: ListView(
+          children: [
+            Builder(
+              builder: (context) {
+                return Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      // 클릭 시 실행할 함수
+                      onPressed: () => _showSnackBar(context),
+                      // 버튼 스타일 지정
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      // 버튼에 넣을 위젯
+                      child: Text('아웃라인드 버튼'),
+                    ),
+                  ],
+                );
+              },
+            ),
+            Builder(
+              builder: (context) {
+                return Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      // 클릭 시 실행할 함수
+                      onPressed: () => _showSnackBar(context),
+                      // 버튼 스타일 지정
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      // 버튼에 넣을 위젯
+                      child: Text('엘리베이티드 버튼'),
+                    ),
+                  ],
+                );
+              },
+            ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {},
+                  icon: Icon(
+                    // ① 플러터에서 기본으로 제공하는 아이콘입니다.
+                    // 제공되는 아이콘 목록은 다음 링크에서 확인해볼 수 있습니다.
+                    // https://fonts.google.com/icons
+                    Icons.home,
+                  ),
+                ),
+              ],
+            ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                GestureDetector(
+                  // 한 번 탭했을 때 실행할 함수
+                  // onTap: () {
+                  //   // 출력 결과는 안드로이드 스튜디오의 [Run] 탭에서 확인 가능합니다.
+                  //   print('on tap');
+                  // },
+                  // // 두 번 탭했을 때 실행할 함수
+                  // onDoubleTap: () {
+                  //   print('on double tap');
+                  // },
+                  // // 길게 눌렀을 때 실행할 함수
+                  // onLongPress: () {
+                  //   print('on long press');
+                  // },
+                  onPanStart: (details) {
+                    print('on onPanStart start');
+                  },
+                  onPanUpdate: (details) {
+                    print('onPanUpdate ');
+                  },
+                  onPanEnd: (details) {
+                    print('onPanEnd ');
+                  },
+                  // 제스처를 적용할 위젯
+                  child: Container(
+                    decoration: BoxDecoration(color: Colors.red),
+                    width: 100.0,
+                    height: 100.0,
+                  ),
+                ),
+              ],
+            ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                Container(
+                  // 스타일 적용
+                  decoration: BoxDecoration(
+                    // 배경색 적용
+                    color: Colors.red,
+                    // 테두리 적용
+                    border: Border.all(
+                      // 테두리 굵기
+                      width: 16.0,
+                      // 테두리 색상
+                      color: Colors.black,
+                    ),
+                    // 모서리 둥글게 만들기
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  // 높이
+                  height: 200.0,
+                  // 너비
+                  width: 100.0,
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                SizedBox(
+                  // 높이 지정
+                  height: 200.0,
+                  // 너비 지정
+                  width: 200.0,
+                  // SizedBox는 색상이 없으므로 크기를 확인하는
+                  // 용도로 Container 추가
+                  child: Container(color: Colors.red),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                Container(
+                  color: Colors.blue,
+                  child: Padding(
+                    // 상하, 좌우로 모두 16픽셀만큼 패딩 적용
+                    padding: EdgeInsets.all(16.0),
+                    child: Container(
+                      color: Colors.red,
+                      width: 50.0,
+                      height: 50.0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                Container(
+                  color: Colors.black, // ③ 최상위 검정 컨테이너 (margin이 적용되는 대상)
+                  child: Container(
+                    color: Colors.blue, // ② 중간 파란 컨테이너
+                    // 마진 적용 위치
+                    margin: EdgeInsets.all(16.0),
+
+                    // 패딩 적용
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+
+                      // ① 패딩이 적용된 빨간 컨테이너
+                      child: Container(
+                        color: Colors.red,
+                        width: 50.0,
+                        height: 50.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              // 주축 정렬 지정
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              // 반대축 정렬 지정
+              crossAxisAlignment: CrossAxisAlignment.center,
+              // 넣고 싶은 위젯 입력
+              children: [
+                Container(height: 50.0, width: 50.0, color: Colors.red),
+                // SizedBox는 일반적으로 공백을 생성할 때 사용
+                SizedBox(width: 12.0),
+                Container(height: 50.0, width: 50.0, color: Colors.green),
+                SizedBox(width: 12.0),
+                Container(height: 50.0, width: 50.0, color: Colors.blue),
+              ],
+            ),
+            SizedBox(height: 16),
+            Column(
+              // 주축 정렬 지정
+              mainAxisAlignment: MainAxisAlignment.start,
+              // 반대축 정렬 지정
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              // 넣고 싶은 위젯 입력
+              children: [
+                Container(height: 50.0, width: 50.0, color: Colors.red),
+                // SizedBox는 일반적으로 공백을 생성할 때 사용
+                SizedBox(height: 12.0), // 공백 추가 (Column이므로 height 사용)
+                Container(height: 50.0, width: 50.0, color: Colors.green),
+                SizedBox(height: 12.0), // 공백 추가
+                Container(height: 50.0, width: 50.0, color: Colors.blue),
+              ],
+            ),
+            SizedBox(height: 30),
+            // 중첩 리스트 뷰
+            // 가로 방향으로 스크롤이 되는 위젯
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 5,
+                itemBuilder: (context, hIndex) {
+                  return Container(
+                    width: 200,
+                    margin: EdgeInsets.all(16),
+                    color: Colors.blueAccent,
+                    alignment: Alignment.center,
+                    child: Text('가로 $hIndex'),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 30),
+            // 중첩 리스트 뷰
+            // 가로 방향으로 스크롤이 되는 위젯
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 5,
+                itemBuilder: (context, hIndex) {
+                  return Container(
+                    width: 200,
+                    margin: EdgeInsets.all(16),
+                    color: Colors.redAccent,
+                    alignment: Alignment.center,
+                    child: Text('가로 $hIndex'),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

@@ -1,0 +1,822 @@
+#플러터 #모바일개발
+
+스프링 서버 연동 작업, 
+todos crud, 커서 기반 페이징 처리. 
+jwt 이용해서, 인증 후, 요청 및 응답 
+
+준비물 : 스프링 백엔드 작업한 서버 필요. 
+IDE : 인텔리 제이
+마리아 디비 사용중. (도커 이용, 디비 서버 켜기)
+깃 주소 : 
+https://github.com/lsy3709/Server501_Test/tree/main/SpringBasic/api5012
+
+기능 확인
+시스템이 jwt 토큰 인증 형식으로 되어서, 
+
+인증 확인 방법. 
+
+포스트맨으로 
+
+메소드 : post 
+주소 : http://localhost:8080/generateToken
+raw -> json 형식으로 
+예시)
+{
+    "mid" : "lsy",
+    "mpw" : "1234"
+}
+
+2
+
+포스트맨으로 
+
+메소드 : post 
+주소 : http://localhost:8080/member/register
+raw -> json 형식으로 
+
+회원 가입 필요할 경우. 
+
+{
+    "mid" :"admin",
+    "mpw" : "1234"
+}
+
+
+리턴, 액세스 토큰 받으면 이걸로 작업. 
+예시)
+{
+     "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJtaWQiOiJsc3kiLCJpYXQiOjE3NDM2Mzk0NzQsImV4cCI6MTc0MzcyNTg3NH0.Vlokf1ouEs5DFj9ho1OJSyHFt0yJQSA_EBwxvUHgzvY",
+    "refreshToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJtaWQiOiJsc3kiLCJpYXQiOjE3NDM2Mzk0NzQsImV4cCI6MTc0NjIzMTQ3NH0.7_zbxf_eXzIPKHFIE9T05Hb0zMCnlsoBK0H1EsgslNw"
+}
+
+1 포스트맨 
+
+2 스웨거 이용. 
+http://localhost:8080/swagger-ui/index.html
+
+상단의 authorize 부분에 액세스 토큰 입력 후, 
+아래의 레스트 테스트 확인 하면됨. 
+
+=========================================================
+플러터 , 화면작업, 컨트롤러 작업 필요함. 
+
+폴더 
+sample_routing -> todos_test ->
+controller, screen 화면 각각 폴더 생성. 
+
+작업
+1
+로그인 작업, 
+
+1)
+컨트롤러
+todos_login_controller.dart
+import 'dart:convert';
+
+import 'package:busanit501_flutter_test/sample_routing/main_screen.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+
+class LoginController extends ChangeNotifier {
+  final TextEditingController idController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage(); // 보안 저장소
+  // final String serverIp = "http://192.168.219.103:8080"; // 서버 주소
+  final String serverIp = "http://10.100.201.87:8080"; // 서버 주소 변경 필요
+  bool isLoading = false; // 로그인 로딩 상태
+  bool isLoggedIn = false; // 로그인 여부
+
+  LoginController() {
+    _checkLoginStatus(); // 생성 시 로그인 상태 확인
+  }
+
+  // 로그인 요청 및 JWT 저장
+  Future<void> login(BuildContext context) async {
+    String inputId = idController.text.trim();
+    String inputPw = passwordController.text.trim();
+
+    if (inputId.isEmpty || inputPw.isEmpty) {
+      _showDialog(context, "오류", "아이디와 비밀번호를 입력하세요.");
+      return;
+    }
+
+    Map<String, String> loginData = {"mid": inputId, "mpw": inputPw};
+
+    try {
+      isLoading = true;
+      notifyListeners(); // UI 업데이트
+
+      final response = await http.post(
+        Uri.parse("$serverIp/generateToken"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(loginData),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        String accessToken = responseData["accessToken"];
+        String refreshToken = responseData["refreshToken"];
+
+        // JWT 토큰 보안 저장소에 저장
+        await secureStorage.write(key: "accessToken", value: accessToken);
+        await secureStorage.write(key: "refreshToken", value: refreshToken);
+        await secureStorage.write(key: "mid", value: inputId); // 로그인한 ID 저장
+
+        // 입력란 초기화
+        clearInputFields();
+
+        // 로그인 상태 업데이트
+        isLoggedIn = true;
+        notifyListeners();
+
+        _showDialog(context, "로그인 성공", "메인 화면으로 이동합니다.");
+
+        // 로그인 성공 후 메인 화면으로 이동
+        // ✅ 로그인 후 이전 화면 제거 후 메인 화면 이동
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const MyMainScreen()),
+                (Route<dynamic> route) => false, // 🔥 이전 모든 화면 제거
+          );
+        });
+      } else {
+        _showDialog(context, "로그인 실패", "아이디 또는 비밀번호가 잘못되었습니다.");
+      }
+    } catch (e) {
+      _showDialog(context, "네트워크 오류", "오류 발생: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+// 로그아웃 확인 다이얼로그
+  Future<void> showLogoutDialog(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("로그아웃 확인"),
+          content: const Text("정말 로그아웃 하시겠습니까?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // 취소 버튼
+              child: const Text("취소"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+                logout(context); // 로그아웃 실행
+              },
+              child: const Text("확인", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 로그아웃 기능 (저장된 로그인 정보 삭제)
+  Future<void> logout(BuildContext context) async {
+    await secureStorage.delete(key: "accessToken");
+    await secureStorage.delete(key: "refreshToken");
+    await secureStorage.delete(key: "mid");
+
+    // 로그인 상태 업데이트
+    isLoggedIn = false;
+    notifyListeners();
+
+    _showDialog(context, "로그아웃","성공");
+
+    // 메인 화면으로 이동
+
+    // ✅ 로그아웃 후 이전 모든 화면 제거 후 메인 화면 이동
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MyMainScreen()),
+          (Route<dynamic> route) => false, // 🔥 이전 모든 화면 제거
+    );
+
+  }
+
+  // 입력 필드 초기화
+  void clearInputFields() {
+    idController.clear();
+    passwordController.clear();
+    notifyListeners();
+  }
+
+  // 로그인 상태 확인 (앱 실행 시 호출)
+  Future<void> _checkLoginStatus() async {
+    String? mid = await secureStorage.read(key: "mid");
+    isLoggedIn = mid != null;
+    notifyListeners();
+  }
+
+  // 보안 저장소에서 JWT 토큰 가져오기
+  Future<String?> getAccessToken() async {
+    return await secureStorage.read(key: "accessToken");
+  }
+
+  // 보안 저장소에서 로그인한 사용자 ID 가져오기
+  Future<String?> getUserId() async {
+    return await secureStorage.read(key: "mid"); // 저장된 ID 불러오기
+  }
+
+  // 다이얼로그 표시 함수
+  void _showDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+2)
+화면
+todos_login.dart
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../controller/todos_login_controller.dart';
+
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final loginController = context.watch<LoginController>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('로그인 화면')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ListView(
+            children: [
+              const Center(child: FlutterLogo(size: 100)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: loginController.idController,
+                decoration: const InputDecoration(labelText: '아이디'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: loginController.passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '패스워드'),
+              ),
+              const SizedBox(height: 20),
+              loginController.isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                onPressed: () => loginController.login(context),
+                child: const Text('로그인'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+3)
+프로바이더 메인에 등록 작업. 
+import 'package:busanit501_flutter_test/sample_routing/login_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_app_routing.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/pd_test_controller/food_controller.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/controller/todos_login_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+
+void main() {
+  // runApp(MyApp());
+  // 프로바이더 등록 작업,
+  // runApp(MyAppRouting());
+  runApp(
+    MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => FoodController()),
+          ChangeNotifierProvider(create: (context) => LoginController())
+        ],
+    child: const MyAppRouting(),)
+  );
+}
+
+
+
+
+
+
+
+
+
+4) 
+로그인의 라우팅 변경 또는 추가. 
+import 'package:busanit501_flutter_test/sample_routing/login_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/main_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen2.dart';
+import 'package:busanit501_flutter_test/sample_routing/pd_test_screen/my_pd_test_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/signup_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/screen/todos_login.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+class MyAppRouting extends StatelessWidget {
+  const MyAppRouting({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      // 시작 하는 화면을, 스플래쉬 화면으로 교체,
+      home: const MySplashScreen2(),
+      //라우팅 준비물 1,
+      routes: {
+        '/main': (context) => const MyMainScreen(),
+        '/signup': (context) => const MySignUpScreen(),
+		// 로그인 화면 교체 작업함
+        '/login': (context) => const LoginScreen(),
+        '/pdtest1': (context) => const MyPdTestScreen(),
+      },
+    );
+  }
+}
+
+============================================
+
+로그인 후, 메인에 로그인한 유저 표기. 
+안전 저장소에서, 저장된 유저명을 화면에 표기하기. 
+메인 스크린을 기존 스테이트 리스 -> 로그인 여부에 따라 
+화면이 변경이 되는 - 스테이트 풀 위젯으로 변경. 
+
+작업. 
+
+사전 작업, 
+안전 저장소 객체 생성 및, 기본 crd 
+//
+플러터 전용의 저장소에 접근 하는 도구, 가져오기, 설정하기. 
+final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+
+1) 쓰기 작업. 
+secureStorage.write(key: "accessToken", value: accessToken);
+
+2) 읽기 작업. 
+secureStorage.read(key: "mid");
+
+3) 삭제 작업
+secureStorage.delete(key: "accessToken");
+
+1
+todos_main_screen.dart 만들기. 
+예시)
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
+
+import '../controller/todos_login_controller.dart';
+
+class TodosMainScreen extends StatefulWidget {
+  const TodosMainScreen({super.key});
+
+  @override
+  State<TodosMainScreen> createState() => _TodosMainScreenState();
+}
+
+class _TodosMainScreenState extends State<TodosMainScreen> {
+  // 플러터 전용의 저장소에 접근 하는 도구, 가져오기, 설정하기.
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  String? userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  // 보안 저장소에서 로그인한 유저 ID 불러오기
+  Future<void> _loadUserId() async {
+    String? mid = await secureStorage.read(key: "mid"); // 저장된 ID 가져오기
+    // 리액트 비슷한 구조이고, 스테이트 상태가 변경이 되면, 화면도 같이 업데이트
+    setState(() {
+      userId = mid;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loginController = context.watch<LoginController>();
+    
+    return Scaffold(
+      appBar: AppBar(title: const Text('메인 화면'),
+          actions: [
+            // 로그인 상태일 때만 로그아웃 버튼 표시
+            if (loginController.isLoggedIn)
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () => loginController.showLogoutDialog(context),
+              ),
+          ]
+      ),
+
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Center(child: FlutterLogo(size: 100)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              //라우팅 2번 째 준비물,
+              onPressed: () => Navigator.pushNamed(context, '/signup'),
+              child: const Text('회원 가입'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/login'),
+              child: const Text('로그인'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/pdtest1'),
+              child: const Text('공공데이터 연동1'),
+            ),
+
+          ],
+        ),
+      ),
+    );
+
+  }
+}
+
+
+2
+라우팅의 경로 변경, 
+
+class MyAppRouting extends StatelessWidget {
+  const MyAppRouting({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      // 시작 하는 화면을, 스플래쉬 화면으로 교체,
+      home: const MySplashScreen2(),
+      //라우팅 준비물 1,
+      routes: {
+        '/main': (context) => const TodosMainScreen(),
+		
+주의사항. 
+todos_login_controller.dart
+LoginController
+기존 메인에서, 변경되 메인으로 교체 작업. 해야함. 
+MaterialPageRoute(builder: (context) => const TodosMainScreen()),
+
+
+==========================================
+
+메인 화면에서, 
+로그인 한 경우에 특정 버튼 보이게 하기. 
+
+todos_main_screen.dart
+if (loginController.isLoggedIn)
+  OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, '/pdtest1'),
+              child: const Text('공공데이터 연동1'),
+            ),
+
+
+==========================================
+회원 가입 
+
+1. 
+컨트롤러
+todos_signup_controller.dart
+
+ex)
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+class SignupController extends ChangeNotifier {
+  // 입력 필드 컨트롤러
+  final TextEditingController idController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController passwordConfirmController = TextEditingController();
+
+  bool isPasswordMatch = true; // 패스워드 일치 여부
+
+  final String serverIp = "http://10.100.201.87:8080"; // 서버 주소 변경 필요
+  // final String serverIp = "http://192.168.219.103:8080"; // 서버 주소 변경 필요
+
+  // 패스워드 일치 여부 검사
+  void validatePassword() {
+    isPasswordMatch = passwordController.text == passwordConfirmController.text;
+    notifyListeners();
+  }
+
+  // 다이얼로그 표시
+  void showDialogMessage(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 토스트 메시지 표시
+  void showToast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  // 아이디 중복 체크 기능
+  Future<void> checkDuplicateId(BuildContext context) async {
+    String inputId = idController.text.trim();
+    if (inputId.isEmpty) {
+      showDialogMessage(context, "오류", "아이디를 입력하세요.");
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse("$serverIp/member/check-mid?mid=$inputId"),
+      );
+
+      if (response.statusCode == 200) {
+        showDialogMessage(context, "사용 가능", "이 아이디는 사용할 수 있습니다.");
+      } else if (response.statusCode == 409) {
+        showDialogMessage(context, "중복된 아이디", "이미 사용 중인 아이디입니다.");
+      } else {
+        showDialogMessage(context, "오류", "서버 응답 오류: ${response.statusCode}");
+      }
+    } catch (e) {
+      showDialogMessage(context, "오류", "네트워크 오류 발생: $e");
+    }
+  }
+
+  // 회원 가입 요청
+  Future<void> signup(BuildContext context) async {
+    if (!isPasswordMatch) {
+      showDialogMessage(context, "오류", "패스워드가 일치해야 합니다.");
+      return;
+    }
+
+    String inputId = idController.text.trim();
+    String inputPw = passwordController.text.trim();
+
+    if (inputId.isEmpty || inputPw.isEmpty) {
+      showToast(context, "아이디와 비밀번호를 입력하세요.");
+      return;
+    }
+
+    Map<String, String> userData = {"mid": inputId, "mpw": inputPw};
+
+    try {
+      final response = await http.post(
+        Uri.parse("$serverIp/member/register"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(userData),
+      );
+
+      if (response.statusCode == 200) {
+        showToast(context, "회원 가입 성공!");
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushReplacementNamed(context, "/main");
+        });
+      } else {
+        showToast(context, "회원 가입 실패: ${response.body}");
+      }
+    } catch (e) {
+      showToast(context, "오류 발생: $e");
+    }
+  }
+}
+
+
+
+2.
+화면 
+todos_signup_screen.dart
+ex)
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../controller/todos_signup_controller.dart';
+
+class TodosSignupScreen extends StatelessWidget {
+  const TodosSignupScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // final signupController = Provider.of<SignupController>(context);
+    final signupController = context.watch<SignupController>(); // 상태 변경 감지
+    return Scaffold(
+      appBar: AppBar(title: const Text('회원 가입')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ListView(
+            children: [
+              // 아이디 입력 필드 + 중복 체크 버튼
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: signupController.idController,
+                      decoration: const InputDecoration(labelText: '아이디'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () => signupController.checkDuplicateId(context),
+                    child: const Text('중복 체크'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // 이메일 입력 필드
+              TextField(
+                controller: signupController.emailController,
+                decoration: const InputDecoration(labelText: '이메일'),
+              ),
+              const SizedBox(height: 16),
+
+              // 패스워드 입력 필드
+              TextField(
+                controller: signupController.passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: '패스워드',
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: signupController.passwordController.text.isNotEmpty
+                          ? (signupController.isPasswordMatch ? Colors.green : Colors.red)
+                          : Colors.grey, // ✅ 입력이 없을 때 기본 색상 유지
+                      width: 2.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: signupController.passwordController.text.isNotEmpty
+                          ? (signupController.isPasswordMatch ? Colors.green : Colors.red)
+                          : Colors.grey, // ✅ 입력이 없을 때 기본 색상 유지
+                      width: 2.0,
+                    ),
+                  ),
+                ),
+                onChanged: (value) => signupController.validatePassword(),
+              ),
+              const SizedBox(height: 16),
+
+// ✅ 패스워드 확인 입력 필드
+              TextField(
+                controller: signupController.passwordConfirmController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: '패스워드 확인',
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: signupController.passwordConfirmController.text.isNotEmpty
+                          ? (signupController.isPasswordMatch ? Colors.green : Colors.red)
+                          : Colors.grey, // ✅ 입력이 없을 때 기본 색상 유지
+                      width: 2.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: signupController.passwordConfirmController.text.isNotEmpty
+                          ? (signupController.isPasswordMatch ? Colors.green : Colors.red)
+                          : Colors.grey, // ✅ 입력이 없을 때 기본 색상 유지
+                      width: 2.0,
+                    ),
+                  ),
+                ),
+                onChanged: (value) => signupController.validatePassword(),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 회원 가입 버튼
+              ElevatedButton(
+                onPressed: () => signupController.signup(context),
+                child: const Text('회원 가입'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+3. 
+main.dart
+프로바이더 등록 
+ex)
+import 'package:busanit501_flutter_test/sample_routing/login_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_app_routing.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/pd_test_controller/food_controller.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/controller/todos_login_controller.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/controller/todos_signup_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+
+void main() {
+  // runApp(MyApp());
+  // 프로바이더 등록 작업,
+  // runApp(MyAppRouting());
+  runApp(
+    MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => FoodController()),
+          ChangeNotifierProvider(create: (context) => LoginController()),
+          ChangeNotifierProvider(create: (context) => SignupController())
+        ],
+    child: const MyAppRouting(),)
+  );
+}
+
+
+
+
+
+4. 
+라우팅 작업. 
+my_app_routing.dart
+
+ex)
+import 'package:busanit501_flutter_test/sample_routing/login_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/main_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/my_splash_screen2.dart';
+import 'package:busanit501_flutter_test/sample_routing/pd_test_screen/my_pd_test_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/signup_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/screen/todos_login.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/screen/todos_main_screen.dart';
+import 'package:busanit501_flutter_test/sample_routing/todos_test/screen/todos_signup_screen.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+class MyAppRouting extends StatelessWidget {
+  const MyAppRouting({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      // 시작 하는 화면을, 스플래쉬 화면으로 교체,
+      home: const MySplashScreen2(),
+      //라우팅 준비물 1,
+      routes: {
+        '/main': (context) => const TodosMainScreen(),
+        '/signup': (context) => const TodosSignupScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/pdtest1': (context) => const MyPdTestScreen(),
+      },
+    );
+  }
+}
+
