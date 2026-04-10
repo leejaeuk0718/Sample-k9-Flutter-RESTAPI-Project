@@ -27,6 +27,12 @@ class _MyPageTabState extends State<MyPageTab> {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<LoginController>();
+    // [확인용 코드 추가] 콘솔창(Run 탭)에서 아래 로그가 어떻게 찍히는지 보세요.
+    print('--- 마이페이지 데이터 확인 ---');
+    print('이름: ${ctrl.memberName}');
+    print('이메일: ${ctrl.memberEmail}');
+    print('지역: ${ctrl.memberRegion}');
+    print('로딩상태: ${ctrl.isMemberInfoLoading}');
 
     return ListView(
       padding: const EdgeInsets.all(16),

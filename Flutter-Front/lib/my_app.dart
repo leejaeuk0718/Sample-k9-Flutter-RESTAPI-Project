@@ -1,6 +1,6 @@
+import 'package:busanit501_flutter_workspace_251021/screen/my_splash.dart';
 import 'package:flutter/material.dart';
 
-import 'screen/my_splash2.dart';
 import 'screen/tab/main_tab_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/signup_screen.dart';
@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
-        cardTheme: const CardTheme(elevation: 1),
+        cardTheme: const CardThemeData(elevation: 1),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,

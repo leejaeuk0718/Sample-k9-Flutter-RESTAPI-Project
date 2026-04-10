@@ -12,7 +12,7 @@ class MyPageScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('마이페이지'),
+        title: const Text('마이페이지2'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),

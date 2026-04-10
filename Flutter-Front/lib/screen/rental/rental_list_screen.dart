@@ -41,7 +41,7 @@ class _RentalListScreenState extends State<RentalListScreen> {
               return ListTile(
                 leading: const Icon(Icons.menu_book),
                 title: Text('도서번호: ${rental.bookId}'),
-                subtitle: Text('대여: ${rental.rentDate} / 반납: ${rental.returnDate}'),
+                subtitle: Text('대여: ${rental.rentalDate} / 반납: ${rental.returnDate}'),
                 trailing: Chip(label: Text(rental.status ?? '알수없음')),
               );
             },

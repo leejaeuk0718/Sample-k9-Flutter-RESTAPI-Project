@@ -1,14 +1,9 @@
 import 'package:busanit501_flutter_workspace_251021/controller/auth/login_controller.dart';
 import 'package:busanit501_flutter_workspace_251021/controller/auth/signup_controller.dart';
 import 'package:busanit501_flutter_workspace_251021/controller/todos/todo_controller.dart';
-import 'package:busanit501_flutter_workspace_251021/screen/login_screen.dart';
-import 'package:busanit501_flutter_workspace_251021/screen/main_screen.dart';
 import 'package:busanit501_flutter_workspace_251021/my_app.dart';
-import 'package:busanit501_flutter_workspace_251021/screen/my_splash.dart';
-import 'package:busanit501_flutter_workspace_251021/screen/my_splash2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'controller/ai/image/ai_image_controller.dart';
 import 'controller/pd_data/food_controller.dart';
 import 'controller/book_controller.dart';
@@ -17,7 +12,6 @@ import 'controller/notice_controller.dart';
 import 'controller/event_controller.dart';
 import 'controller/inquiry_controller.dart';
 import 'controller/reserve_controller.dart';
-import 'screen/sample_my_app1.dart' as sampleApp;
 
 void main() {
   runApp(

@@ -110,7 +110,11 @@ class LoginController extends ChangeNotifier {
         headers: {'Authorization': 'Bearer $token'},
       );
       if (res.statusCode == 200) {
-        _applyMemberData(jsonDecode(res.body));
+        // ✅ 수정 후: 바이트 데이터를 UTF-8로 먼저 디코딩한 후 JSON 파싱
+        final String decodedBody = utf8.decode(res.bodyBytes);
+        final Map<String, dynamic> data = jsonDecode(decodedBody);
+
+        _applyMemberData(data);
       }
     } catch (_) {
     } finally {
