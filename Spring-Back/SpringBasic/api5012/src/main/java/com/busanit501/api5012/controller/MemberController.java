@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -126,8 +127,17 @@ public class MemberController {
     @Operation(summary = "이메일 중복 체크", description = "입력한 이메일의 사용 가능 여부를 반환합니다.")
     public ResponseEntity<Map<String, Boolean>> checkEmail(
             @Parameter(description = "중복 확인할 이메일") @RequestParam String email) {
-        log.info("이메일 중복 체크 요청 - email: {}", email);
+        log.info("이메일 중입 체크 요청 - email: {}", email);
         boolean isDuplicate = memberLibraryService.checkDuplicateEmail(email);
         return ResponseEntity.ok(Map.of("available", !isDuplicate));
+    }
+
+    // ── GET /api/member/list  →  전체 회원 목록 (관리자 전용) ─────────────
+
+    @GetMapping("/list")
+    @Operation(summary = "전체 회원 목록 조회", description = "관리자 전용: 전체 회원 목록을 반환합니다.")
+    public ResponseEntity<List<MemberDTO>> getAllMembers() {
+        log.info("관리자 - 전체 회원 목록 조회");
+        return ResponseEntity.ok(memberLibraryService.getAllMembers());
     }
 }

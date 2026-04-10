@@ -15,7 +15,7 @@
 5. [Spring 백엔드 파일 현황](#5-spring-백엔드-파일-현황)
 6. [완료된 작업 체크리스트](#6-완료된-작업-체크리스트)
 7. [현재 동작 흐름](#7-현재-동작-흐름)
-8. [남은 작업 및 개선 사항](#8-남은-작업-및-개선-사항)
+8. [신규 기능 구현 체크리스트](#8-신규-기능-구현-체크리스트)
 9. [API 엔드포인트 매핑표](#9-api-엔드포인트-매핑표)
 
 ---
@@ -28,13 +28,15 @@ Flutter App (Android Emulator)
         | HTTP (10.0.2.2:8080)
         v
 Spring Boot 서버 (localhost:8080)
-   +-- JWT 인증 시스템  (/member/*, /generateToken)
-   |      +-- APIUser 테이블
+   +-- JWT 인증 시스템  (/generateToken, /api/member/*)
+   |      +-- Member 테이블 (통합 단일 회원)
    +-- 도서관 API 시스템  (/api/*)
-          +-- LibraryMember 테이블
+          +-- Member 테이블
               +-- Book, Rental, Notice, Event
               +-- Inquiry, Apply (시설예약)
               +-- WishBook, Reply
+   +-- 미디어 저장소 (c:/upload/springTest)
+          +-- 프로필 이미지 (UUID 파일명)
 ```
 
 **주요 상수 (Flutter-Front/lib/const/api_constants.dart):**
@@ -46,16 +48,12 @@ Spring Boot 서버 (localhost:8080)
 
 ## 2. 회원 시스템 구조
 
-> **핵심**: Spring에는 두 개의 독립적인 회원 테이블이 존재합니다.
+> **핵심**: Spring에는 단일 Member 테이블을 사용합니다 (APIUser 통합 완료).
 
-| 구분 | 엔티티 | 용도 | 가입 엔드포인트 |
-|------|--------|------|----------------|
-| JWT 인증 | `APIUser` | JWT 토큰 발급 | `POST /member/register` |
-| 도서관 | `Member` (LibraryMember) | 도서관 모든 API | `POST /api/member/signup` |
-
-**Flutter 가입 시 두 엔드포인트 모두 호출 (signup_controller.dart):**
-1. `POST /member/register` → APIUser 생성 (JWT 로그인용)
-2. `POST /api/member/signup` → LibraryMember 생성 (도서관 API용, memberId 확보)
+| 구분 | 엔티티 | 용도 | 엔드포인트 |
+|------|--------|------|------------|
+| 통합 회원 | `Member` | JWT 인증 + 도서관 모든 API | `POST /api/member/signup` |
+| 로그인 | JWT | 토큰 발급 | `POST /generateToken` |
 
 **FlutterSecureStorage 저장 키:**
 
@@ -65,7 +63,7 @@ Spring Boot 서버 (localhost:8080)
 | `refreshToken` | JWT 리프레시 토큰 | 토큰 갱신 |
 | `mid` | String (사용자 아이디) | 사용자 식별 |
 | `memberId` | Long (DB 기본키) | 도서관 API 파라미터 |
-| `profileImg` | 프로필 이미지 경로 | UI 표시 |
+| `profileImg` | 프로필 이미지 UUID 파일명 | UI 표시 (서버에서 로드) |
 
 ---
 
@@ -73,7 +71,7 @@ Spring Boot 서버 (localhost:8080)
 
 ### 앱 진입 흐름
 ```
-MySplash2 (3초)
+MySplash (3초)
     |
     v
 MainTabScreen  <-- 모든 진입점 (/main 라우트)
@@ -93,17 +91,7 @@ MainTabScreen  <-- 모든 진입점 (/main 라우트)
 | 1 도서 | BookTab | 검색바(로컬필터) + 도서 ListView → /bookDetail |
 | 2 내 서비스 | MyServiceTab | 중첩 TabBar: 대여현황 / 1:1문의(FAB) / 시설예약(폼+목록) |
 | 3 AI | AiTab | AI이미지 카드 → /ai-image / AI주가 카드 → /ai-stock |
-| 4 마이페이지 | MyPageTab | 회원정보(이름/이메일/지역/가입일) + 바로가기 + 로그아웃 |
-
-### 공통 위젯 (lib/widget/common/)
-
-| 파일 | 용도 |
-|------|------|
-| `app_base_layout.dart` | 공통 Scaffold 래퍼 + LoginRequiredWidget |
-| `loading_widget.dart` | 로딩 스피너 (메시지 선택) |
-| `empty_widget.dart` | 빈 결과 (아이콘 + 메시지) |
-| `section_header.dart` | 섹션 타이틀 + 더보기 버튼 |
-| `library_card_tile.dart` | 카드형 ListTile (아이콘/제목/부제목/트레일링) |
+| 4 마이페이지 | MyPageTab | 회원정보(이름/이메일/지역/가입일) + 바로가기 + 관리자 진입 |
 
 ---
 
@@ -113,120 +101,78 @@ MainTabScreen  <-- 모든 진입점 (/main 라우트)
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
-| Flutter-Front/lib/main.dart | 완료 | MultiProvider 등록 (11개 컨트롤러) |
+| Flutter-Front/lib/main.dart | 완료 | MultiProvider 등록 |
 | Flutter-Front/lib/my_app.dart | 완료 | Material3 테마 + 전체 Named Route 등록 |
-| Flutter-Front/lib/screen/my_splash2.dart | 완료 | 스플래시 → /main 이동 |
+| Flutter-Front/lib/screen/my_splash.dart | 완료 | 스플래시 → /main 이동 |
 | Flutter-Front/lib/const/api_constants.dart | 완료 | API base URL 상수 |
 
-### 4-2. 탭 메인 화면 (신규)
+### 4-2. 탭 메인 화면
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
-| Flutter-Front/lib/screen/tab/main_tab_screen.dart | 완료 | BottomNavigationBar(NavigationBar) 5탭, IndexedStack 상태보존 |
-| Flutter-Front/lib/screen/tab/home_tab.dart | 완료 | PageView 배너(Timer 자동슬라이드) + 공지/이벤트 미리보기 |
-| Flutter-Front/lib/screen/tab/book_tab.dart | 완료 | 검색바 + 도서 ListView (상태 기반 색상 Chip) |
-| Flutter-Front/lib/screen/tab/my_service_tab.dart | 완료 | 중첩 TabController(대여/문의/예약) + FAB 문의작성 |
-| Flutter-Front/lib/screen/tab/ai_tab.dart | 완료 | AI기능 선택 카드 2종 |
-| Flutter-Front/lib/screen/tab/mypage_tab.dart | 완료 | 회원정보 카드(mname/email/region/regDate) + 메뉴 |
+| Flutter-Front/lib/screen/tab/main_tab_screen.dart | 완료 | BottomNavigationBar 5탭, IndexedStack 상태보존 |
+| Flutter-Front/lib/screen/tab/home_tab.dart | 완료 | PageView 배너 + 공지/이벤트 미리보기 |
+| Flutter-Front/lib/screen/tab/book_tab.dart | 완료 | 검색바 + 도서 ListView |
+| Flutter-Front/lib/screen/tab/my_service_tab.dart | 완료 | 중첩 TabController |
+| Flutter-Front/lib/screen/tab/ai_tab.dart | 완료 | AI 기능 선택 카드 2종 |
+| Flutter-Front/lib/screen/tab/mypage_tab.dart | 신규기능 | 프로필 이미지 표시 + 관리자 진입 버튼 추가 예정 |
 
-### 4-3. 공통 위젯 (신규)
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/widget/common/app_base_layout.dart | 완료 | 베이스 Scaffold + LoginRequiredWidget |
-| Flutter-Front/lib/widget/common/loading_widget.dart | 완료 | 로딩 공통 위젯 |
-| Flutter-Front/lib/widget/common/empty_widget.dart | 완료 | 빈 결과 공통 위젯 |
-| Flutter-Front/lib/widget/common/section_header.dart | 완료 | 섹션 헤더(타이틀+더보기) |
-| Flutter-Front/lib/widget/common/library_card_tile.dart | 완료 | 카드형 ListTile 공통 위젯 |
-
-### 4-4. 인증 (Auth)
+### 4-3. 인증 (Auth)
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
-| Flutter-Front/lib/controller/auth/login_controller.dart | 완료 | JWT 로그인, loadMemberInfo(), 회원정보 메모리 저장, 로그아웃 |
-| Flutter-Front/lib/controller/auth/signup_controller.dart | 완료 | 이중 가입 (APIUser + LibraryMember), mname/region 필드 |
+| Flutter-Front/lib/controller/auth/login_controller.dart | 완료 | JWT 로그인, loadMemberInfo(), 로그아웃 |
+| Flutter-Front/lib/controller/auth/signup_controller.dart | 신규기능 | 프로필 이미지 선택/업로드 추가 예정 |
 | Flutter-Front/lib/screen/login_screen.dart | 완료 | 로그인 화면 |
-| Flutter-Front/lib/screen/signup_screen.dart | 완료 | 가입 화면 (아이디/이름/이메일/지역/비밀번호) |
+| Flutter-Front/lib/screen/signup_screen.dart | 신규기능 | 프로필 이미지 선택 UI 추가 예정 |
+| Flutter-Front/lib/screen/mypage/edit_profile_screen.dart | 신규 | 내 정보 수정 화면 (신규 생성) |
+
+### 4-4. 관리자 (Admin) — 신규
+
+| 파일 | 상태 | 설명 |
+|------|------|------|
+| Flutter-Front/lib/screen/admin/admin_dashboard_screen.dart | 신규 | 관리자 대시보드 (신규 생성) |
+| Flutter-Front/lib/screen/admin/admin_book_screen.dart | 신규 | 도서 관리 화면 |
+| Flutter-Front/lib/screen/admin/admin_member_screen.dart | 신규 | 회원 관리 화면 |
+| Flutter-Front/lib/screen/admin/admin_event_screen.dart | 신규 | 이벤트 관리 화면 |
+| Flutter-Front/lib/screen/admin/admin_notice_screen.dart | 신규 | 공지사항 관리 화면 |
+| Flutter-Front/lib/screen/admin/admin_inquiry_screen.dart | 신규 | 문의 관리 화면 |
+| Flutter-Front/lib/screen/admin/admin_facility_screen.dart | 신규 | 시설예약 관리 화면 |
 
 ### 4-5. 도서 (Book)
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
 | Flutter-Front/lib/controller/book_controller.dart | 완료 | fetchBooks(), fetchBookById() |
-| Flutter-Front/lib/model/book_model.dart | 완료 | id, title, author, publisher, isbn, status |
-| Flutter-Front/lib/screen/book/book_list_screen.dart | 완료 | 독립 화면 (Navigator.push 대상) |
-| Flutter-Front/lib/screen/book/book_detail_screen.dart | 완료 | 실제 API 조회 + 대여 신청 버튼 |
+| Flutter-Front/lib/screen/book/book_list_screen.dart | 완료 | 도서 목록 화면 |
+| Flutter-Front/lib/screen/book/book_detail_screen.dart | 완료 | 도서 상세 + 대여 신청 |
 
-### 4-6. 대여 (Rental)
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/controller/rental_controller.dart | 완료 | fetchMemberRentals(), rentBook(bookId) |
-| Flutter-Front/lib/model/rental_model.dart | 완료 | bookId, rentDate, returnDate, status |
-| Flutter-Front/lib/screen/rental/rental_list_screen.dart | 완료 | 독립 화면 |
-
-### 4-7. 공지사항 (Notice)
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/controller/notice_controller.dart | 완료 | fetchNotices() |
-| Flutter-Front/lib/model/notice_model.dart | 완료 | id, title, regDate, viewCount |
-| Flutter-Front/lib/screen/notice/notice_list_screen.dart | 완료 | 독립 화면 |
-| Flutter-Front/lib/screen/notice/notice_detail_screen.dart | 완료 | 독립 화면 |
-
-### 4-8. 이벤트 (Event)
+### 4-6. 이벤트 (Event)
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
 | Flutter-Front/lib/controller/event_controller.dart | 완료 | fetchEvents(), applyEvent() |
-| Flutter-Front/lib/model/event_model.dart | 완료 | startDate\|\|eventDate fallback |
-| Flutter-Front/lib/screen/event/event_list_screen.dart | 완료 | 독립 화면 |
-| Flutter-Front/lib/screen/event/event_detail_screen.dart | 완료 | 독립 화면 |
-
-### 4-9. 1:1 문의 (Inquiry)
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/controller/inquiry_controller.dart | 완료 | fetchMyInquiries(), postInquiry() |
-| Flutter-Front/lib/model/inquiry_model.dart | 완료 | answered\|\|isReplied fallback |
-| Flutter-Front/lib/screen/inquiry/inquiry_list_screen.dart | 완료 | 독립 화면 |
-| Flutter-Front/lib/screen/inquiry/inquiry_write_screen.dart | 완료 | 문의 작성 (StatefulWidget) |
-
-### 4-10. 시설 예약 (Reserve)
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/controller/reserve_controller.dart | 완료 | fetchReservations(), createReservation() |
-| Flutter-Front/lib/model/apply_model.dart | 완료 | facilityType\|\|facilityName, reserveDate\|\|applyDate fallback |
-| Flutter-Front/lib/screen/reserve/facility_reserve_screen.dart | 완료 | 독립 화면 (폼 + 목록) |
-
-### 4-11. AI 기능
-
-| 파일 | 상태 | 설명 |
-|------|------|------|
-| Flutter-Front/lib/controller/ai/image/ai_image_controller.dart | 완료 | Flask AI 이미지 분석 |
-| Flutter-Front/lib/controller/ai/stock/ai_stock_provider.dart | 완료 | AI 주가 예측 |
-| Flutter-Front/lib/screen/ai/image/ai_image_screen.dart | 완료 | AI 이미지 화면 |
-| Flutter-Front/lib/screen/ai/stock/ai_stock_screen.dart | 완료 | AI 주가 화면 |
+| Flutter-Front/lib/screen/event/event_list_screen.dart | 완료 | 이벤트 목록 |
+| Flutter-Front/lib/screen/event/event_detail_screen.dart | 신규기능 | 행사 신청 버튼 API 연동 예정 |
 
 ---
 
 ## 5. Spring 백엔드 파일 현황
 
-### JWT 인증
+### JWT 인증 (통합)
 | 파일 | 설명 |
 |------|------|
 | security/filter/APILoginFilter.java | POST /generateToken → JWT 발급 |
 | security/handler/APILoginSuccessHandler.java | accessToken + refreshToken 응답 |
 | security/filter/TokenCheckFilter.java | Bearer 토큰 검증 |
-| service/MemberServiceImpl.java | POST /member/register → APIUser 생성 |
+| security/APIUserDetailsService.java | Member 기반 UserDetails 로드 |
 
-### 도서관 회원
+### 회원 API
 | 파일 | 설명 |
 |------|------|
-| controller/library/LibraryMemberController.java | POST /api/member/signup, GET /api/member/me |
-| service/library/MemberLibraryServiceImpl.java | LibraryMember CRUD, BCrypt 암호화 |
-| domain/library/Member.java | mid, mpw, mname, email, region, role |
+| controller/MemberController.java | POST /api/member/signup, GET /api/member/me, PUT /api/member/update, PUT /api/member/profile-image |
+| service/library/MemberLibraryServiceImpl.java | Member CRUD, BCrypt 암호화 |
+| domain/library/Member.java | mid, mpw, mname, email, region, role, profileImage |
 
 ### 도서관 기능 API
 | 컨트롤러 | 주요 엔드포인트 |
@@ -238,61 +184,42 @@ MainTabScreen  <-- 모든 진입점 (/main 라우트)
 | InquiryController.java | GET /api/inquiry/my?memberId, POST /api/inquiry?memberId |
 | ApplyController.java | GET /api/apply/my?memberId&page&size, POST /api/apply?memberId |
 
+### 미디어 저장소 설정 (신규)
+| 파일 | 설명 |
+|------|------|
+| config/CustomServletConfig.java | /files/** → c:/upload/springTest 정적 서빙 추가 예정 |
+| MemberController.java | PUT /api/member/profile-image (base64 → UUID 파일 저장) |
+
 ---
 
 ## 6. 완료된 작업 체크리스트
 
-### 탭 기반 레이아웃 개편 (이번 세션)
-- [x] `MainTabScreen` — NavigationBar 5탭, IndexedStack 상태보존, 로그인 가드
-- [x] `HomeTab` — PageView 배너(Timer 자동슬라이드 3초) + 공지/이벤트 미리보기 + RefreshIndicator
-- [x] `BookTab` — TextField 검색바(로컬필터) + ListView + 상태 Chip
-- [x] `MyServiceTab` — 중첩 TabController (대여현황 / 1:1문의+FAB / 시설예약폼)
-- [x] `AiTab` — AI 기능 카드 2종 (이미지 분석 / 주가 예측)
-- [x] `MyPageTab` — 회원정보 카드(mname/email/region/regDate) + 바로가기 메뉴
+### 회원 시스템 통합 (APIUser → Member 단일화)
+- [x] `APIUserDetailsService` — Member 기반으로 교체
+- [x] `APIUserDTO` — APIUser 의존성 제거, mid 필드 유지
+- [x] `MemberController` — /api/member/* 통합 (signup, me, update, profile-image, check-mid)
+- [x] `APIUser`, `APlUserRepository` 삭제
+- [x] `MemberService`, `MemberServiceImpl` (구버전) 삭제
+- [x] `LibraryMemberController` 삭제
+- [x] Git 커밋 및 푸시 완료
 
-### 공통 위젯 분리
-- [x] `AppBaseLayout` — 공통 Scaffold + `LoginRequiredWidget`
-- [x] `LoadingWidget` — 메시지 선택 가능한 로딩 스피너
-- [x] `EmptyWidget` — 아이콘 + 메시지 빈 결과 위젯
-- [x] `SectionHeader` — 타이틀 + 더보기 버튼
-- [x] `LibraryCardTile` — Card 기반 공통 ListTile
+### 탭 기반 레이아웃 개편
+- [x] `MainTabScreen` — NavigationBar 5탭, IndexedStack 상태보존
+- [x] `HomeTab`, `BookTab`, `MyServiceTab`, `AiTab`, `MyPageTab`
+- [x] 공통 위젯 (`AppBaseLayout`, `LoadingWidget`, `EmptyWidget` 등)
 
 ### LoginController 개선
-- [x] `loadMemberInfo()` — GET /api/member/me 호출, 회원정보 메모리 저장
-- [x] `isMemberInfoLoading` 로딩 상태 추가
-- [x] `currentMid`, `memberName`, `memberEmail`, `memberRegion`, `memberRegDate` 노출
+- [x] `loadMemberInfo()` — 회원정보 메모리 저장
 - [x] 로그아웃 시 모든 회원정보 초기화
-
-### 이전 세션 완료 항목
-- [x] 회원가입 이중 연동 (APIUser + LibraryMember)
-- [x] mname/region 가입 폼 필드 추가
-- [x] 5개 컨트롤러 실제 API 연동 (Rental/Notice/Event/Inquiry/Reserve)
-- [x] 도서 대여 신청 기능 (rentBook)
-- [x] 시설 예약 폼 UI
-- [x] 모델 필드 불일치 수정 (??fallback)
-- [x] RenderFlex 오버플로 수정
 
 ---
 
 ## 7. 현재 동작 흐름
 
-### 앱 진입 ~ 메인화면
-```
-MySplash2 (3초 대기)
-    |
-    +-- Navigator.pushReplacementNamed('/main')
-    |
-MainTabScreen
-    +-- [홈 탭] 비로그인: 로그인/가입 버튼 표시
-    |           로그인: 공지/이벤트 미리보기
-    +-- [기타 탭] 비로그인 → 로그인 유도 다이얼로그
-```
-
-### 회원가입 플로우
+### 회원가입 플로우 (통합 후)
 ```
 SignupScreen (아이디/이름/이메일/지역/비밀번호)
-    +-- POST /member/register    → APIUser 생성
-    +-- POST /api/member/signup  → LibraryMember 생성
+    +-- POST /api/member/signup  → Member 단일 생성
     +-- 성공 → /login
 ```
 
@@ -304,49 +231,105 @@ LoginScreen
     +-- 성공 → /main (MainTabScreen)
 ```
 
-### 도서관 API 공통 패턴
-```dart
-Authorization: Bearer $accessToken   // 모든 API 요청
-memberId: $memberId                   // 회원 관련 파라미터
-```
+---
+
+## 8. 신규 기능 구현 체크리스트
+
+> 이 섹션은 현재 세션에서 구현할 4가지 신규 기능의 상세 체크리스트입니다.
 
 ---
 
-## 8. 남은 작업 및 개선 사항
+### Feature 1: 회원가입 프로필 이미지 📸
 
-### 필수
+**목표**: 회원가입 시 갤러리/카메라로 프로필 이미지 선택 → 앱 내부 저장 → base64로 서버 전송 (5MB 미만)
 
-- [ ] **JWT 토큰 만료 처리**
-  401 응답 시 RefreshToken으로 자동 갱신 또는 /login 이동.
-  현재: 401 응답 시 빈 목록 또는 에러 메시지만 표시
+#### 구현 방법
+- Flutter `image_picker` 패키지로 갤러리/카메라 접근
+- `path_provider` 패키지로 앱 내부 저장소 경로 획득 후 복사 저장
+- 이미지를 base64 인코딩하여 JSON body에 포함
+- 5MB(5,242,880 bytes) 초과 시 경고 다이얼로그 표시
+- Spring에서 base64 디코딩 → UUID 파일명으로 `c:/upload/springTest`에 저장
 
-- [ ] **이중 가입 실패 롤백**
-  Step1(APIUser) 성공 후 Step2(LibraryMember) 실패 시 불완전 상태 처리
+#### Flutter 체크리스트
+- [ ] `pubspec.yaml` — `path_provider: ^2.1.2` 추가
+- [ ] `signup_controller.dart` — `pickProfileImage()` 메서드 (갤러리/카메라 선택)
+- [ ] `signup_controller.dart` — `_saveToAppStorage()` 앱 내부 저장 (Documents 폴더)
+- [ ] `signup_controller.dart` — `signup()` 수정: base64 인코딩 후 `profileImageBase64` 필드 포함
+- [ ] `signup_controller.dart` — 5MB 초과 검사 및 경고
+- [ ] `signup_screen.dart` — 프로필 이미지 선택 UI (CircleAvatar + 갤러리/카메라 버튼)
 
-- [ ] **도서 대여 신청 API 경로 확인**
-  Spring `RentalController`에서 `POST /api/rental?memberId&bookId` 파라미터 방식 확인
-  (현재 Flutter: query param 방식 — Spring이 body 방식이면 수정 필요)
+#### Spring 체크리스트
+- [ ] `MemberController.java` — `POST /api/member/signup` 요청 body에 `profileImageBase64` 필드 처리
+- [ ] `MemberLibraryServiceImpl.java` — base64 디코딩 → UUID 파일명 생성 → `c:/upload/springTest` 저장
+- [ ] `Member.java` — `profileImage` 필드 (UUID 파일명 저장)
+- [ ] `CustomServletConfig.java` — `/upload/**` → `c:/upload/springTest` 정적 파일 서빙 설정
 
-### 중요 (UX)
+---
 
-- [ ] **공지사항/이벤트 페이지네이션**
-  현재 첫 20건만 조회. 무한 스크롤 또는 더보기 구현
+### Feature 2: 마이페이지 프로필 이미지 + 내 정보 수정 👤
 
-- [ ] **대여 현황에 도서 제목 표시**
-  현재 `도서 #123` 형태 → bookId로 도서 정보 조회 후 제목 표시
+**목표**: 마이페이지에서 업로드된 프로필 이미지 표시 + 내 정보 수정 화면 구현
 
-- [ ] **홈탭 배너 이미지 교체**
-  현재 컬러 그라디언트 + 아이콘. 실제 도서관 이미지로 교체 가능
+#### 구현 방법
+- `LoginController.loadMemberInfo()` 에서 `profileImage` 필드 읽기
+- 프로필 이미지 URL: `http://10.0.2.2:8080/upload/{uuid파일명}`
+- `NetworkImage` 위젯으로 표시, 없으면 이니셜 CircleAvatar 폴백
+- 내 정보 수정: 이름/이메일/지역 수정 → `PUT /api/member/update` 호출
 
-- [ ] **도서 목록 API 경로 확인**
-  현재 `GET /api/book?page&size`. Spring이 `/api/book/list` 형태면 수정
+#### Flutter 체크리스트
+- [ ] `login_controller.dart` — `memberProfileImage` 필드 추가, `loadMemberInfo()`에서 파싱
+- [ ] `mypage_tab.dart` — CircleAvatar를 NetworkImage 프로필 이미지로 교체 (폴백 포함)
+- [ ] `mypage_tab.dart` — "내 정보 수정" 버튼 → `/editProfile` 라우트 이동
+- [ ] `mypage_tab.dart` — `memberRole == 'ADMIN'` 시 "관리자 대시보드" 버튼 표시
+- [ ] `edit_profile_screen.dart` — 신규 생성: 이름/이메일/지역 수정 폼
+- [ ] `edit_profile_screen.dart` — `PUT /api/member/update` API 호출
+- [ ] `my_app.dart` — `/editProfile` 라우트 등록
 
-### 선택
+---
 
-- [ ] **희망 도서 신청** — Spring WishBook 도메인 존재, Flutter 화면 미구현
-- [ ] **문의 답변 상세 조회** — Reply 도메인 활용
-- [ ] **앱 테마 커스텀** — Material3 ColorScheme 브랜딩
-- [ ] **오프라인 캐싱** — 마지막 조회 데이터 로컬 저장
+### Feature 3: 관리자 모드 🔧
+
+**목표**: `memberRole == 'ADMIN'` 인 경우 관리자 대시보드 진입 가능, 도서/회원/이벤트/공지/문의/시설예약 관리
+
+#### 구현 방법
+- 마이페이지에 "관리자 대시보드" 버튼 (ADMIN 역할일 때만 표시)
+- 관리자 대시보드: 6개 관리 항목 카드 그리드
+- 각 관리 화면: 목록 조회 + 기본 CRUD 작업 (조회 위주)
+
+#### Flutter 체크리스트
+- [ ] `admin_dashboard_screen.dart` — 신규: 6개 관리 카드 그리드 (도서/회원/이벤트/공지/문의/시설)
+- [ ] `admin_book_screen.dart` — 도서 목록 + 상태 변경 기능
+- [ ] `admin_member_screen.dart` — 회원 목록 조회 (`GET /api/member/list`)
+- [ ] `admin_event_screen.dart` — 이벤트 목록 + 신청자 확인
+- [ ] `admin_notice_screen.dart` — 공지사항 목록 + 등록 폼
+- [ ] `admin_inquiry_screen.dart` — 문의 목록 + 답변 처리
+- [ ] `admin_facility_screen.dart` — 시설예약 목록 조회
+- [ ] `my_app.dart` — `/admin`, `/adminBook`, `/adminMember` 등 라우트 등록
+
+#### Spring 체크리스트
+- [ ] `MemberController.java` — `GET /api/member/list` (ADMIN 전용 회원 목록 조회)
+
+---
+
+### Feature 4: 이벤트 참가 신청하기 🎉
+
+**목표**: 이벤트 상세 화면의 "행사 참가 신청하기" 버튼을 실제 API와 연동
+
+#### 구현 방법
+- `EventController.applyEvent(int eventId)` 이미 구현됨
+- `event_detail_screen.dart`의 TODO 버튼에서 `EventController.applyEvent()` 호출
+- 신청 성공/실패 SnackBar 메시지 표시
+- 중복 신청 방지 (서버 에러 메시지 처리)
+
+#### Flutter 체크리스트
+- [ ] `event_detail_screen.dart` — `StatelessWidget` → `StatefulWidget` 또는 `Consumer` 활용
+- [ ] `event_detail_screen.dart` — 신청 버튼 onPressed에 `EventController.applyEvent(eventId)` 연결
+- [ ] `event_detail_screen.dart` — 로딩 상태 표시 (버튼 비활성화)
+- [ ] `event_detail_screen.dart` — 성공/실패 SnackBar 메시지
+
+#### Spring (기존 완료)
+- [x] `EventController.java` — `POST /api/event/{id}/apply?memberId` 이미 구현됨
+- [x] `event_controller.dart` — `applyEvent(int eventId)` 이미 구현됨
 
 ---
 
@@ -354,10 +337,13 @@ memberId: $memberId                   // 회원 관련 파라미터
 
 | 기능 | 메서드 | 엔드포인트 | Flutter 파일 | JWT |
 |------|--------|-----------|-------------|-----|
-| APIUser 가입 | POST | `/member/register` | signup_controller.dart | 없음 |
 | 로그인 (JWT) | POST | `/generateToken` | login_controller.dart | 없음 |
-| LibraryMember 가입 | POST | `/api/member/signup` | signup_controller.dart | 없음 |
+| 회원 가입 | POST | `/api/member/signup` | signup_controller.dart | 없음 |
 | 내 회원정보 | GET | `/api/member/me?mid={}` | login_controller.dart | JWT |
+| 회원정보 수정 | PUT | `/api/member/update` | edit_profile_screen.dart | JWT |
+| 프로필 이미지 업로드 | PUT | `/api/member/profile-image` | signup_controller.dart | JWT |
+| 아이디 중복 체크 | GET | `/api/member/check-mid?mid={}` | signup_controller.dart | 없음 |
+| 회원 목록 (관리자) | GET | `/api/member/list` | admin_member_screen.dart | JWT+ADMIN |
 | 도서 목록 | GET | `/api/book?page&size` | book_controller.dart | JWT |
 | 도서 상세 | GET | `/api/book/{id}` | book_controller.dart | JWT |
 | 도서 대여 신청 | POST | `/api/rental?memberId&bookId` | rental_controller.dart | JWT |
@@ -370,3 +356,4 @@ memberId: $memberId                   // 회원 관련 파라미터
 | 문의 작성 | POST | `/api/inquiry?memberId` | inquiry_controller.dart | JWT |
 | 내 예약 목록 | GET | `/api/apply/my?memberId&page&size` | reserve_controller.dart | JWT |
 | 시설 예약 신청 | POST | `/api/apply?memberId` | reserve_controller.dart | JWT |
+| 프로필 이미지 파일 | GET | `/upload/{filename}` | NetworkImage URL | 없음 |

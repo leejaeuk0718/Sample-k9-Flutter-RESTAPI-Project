@@ -21,7 +21,49 @@ class SignupScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: ListView(
             children: [
-              // 아이디 + 중복 체크
+              // ── 프로필 이미지 선택 ──
+              Center(
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    GestureDetector(
+                      onTap: () => ctrl.showImagePickerDialog(context),
+                      child: CircleAvatar(
+                        radius: 55,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: ctrl.profileImageFile != null
+                            ? FileImage(ctrl.profileImageFile!)
+                            : null,
+                        child: ctrl.profileImageFile == null
+                            ? const Icon(Icons.person,
+                                size: 55, color: Colors.grey)
+                            : null,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => ctrl.showImagePickerDialog(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(Icons.camera_alt,
+                            size: 18, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Center(
+                child: Text('프로필 이미지 선택 (선택, 5MB 이하)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+              ),
+              const SizedBox(height: 20),
+
+              // ── 아이디 + 중복 체크 ──
               Row(
                 children: [
                   Expanded(
@@ -42,7 +84,7 @@ class SignupScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 이름
+              // ── 이름 ──
               TextField(
                 controller: ctrl.mnameController,
                 decoration: const InputDecoration(
@@ -52,7 +94,7 @@ class SignupScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 이메일
+              // ── 이메일 ──
               TextField(
                 controller: ctrl.emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -63,17 +105,15 @@ class SignupScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 지역 (선택)
-              // 지역 선택 (기존 TextField 제거 후 교체)
+              // ── 지역 선택 ──
               DropdownButtonFormField<String>(
-                value: ctrl.selectedRegion, // 컨트롤러의 현재 선택값
+                value: ctrl.selectedRegion,
                 decoration: const InputDecoration(
                   labelText: '지역 선택 *',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.map_outlined), // 아이콘 추가로 가독성 향상
+                  prefixIcon: Icon(Icons.map_outlined),
                 ),
                 hint: const Text('거주 지역을 선택하세요'),
-                // 리스트를 드롭다운 아이템으로 변환
                 items: ctrl.regions.map((String region) {
                   return DropdownMenuItem<String>(
                     value: region,
@@ -81,14 +121,13 @@ class SignupScreen extends StatelessWidget {
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
-                  ctrl.setRegion(newValue); // 선택 시 컨트롤러 업데이트
+                  ctrl.setRegion(newValue);
                 },
-                // 선택 안 했을 때의 유효성 검사를 추가하고 싶다면 validator 사용 가능
                 validator: (value) => value == null ? '지역을 선택해주세요' : null,
               ),
               const SizedBox(height: 16),
 
-              // 비밀번호
+              // ── 비밀번호 ──
               TextField(
                 controller: ctrl.passwordController,
                 obscureText: true,
@@ -107,7 +146,7 @@ class SignupScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 비밀번호 확인
+              // ── 비밀번호 확인 ──
               TextField(
                 controller: ctrl.passwordConfirmController,
                 obscureText: true,
@@ -136,11 +175,12 @@ class SignupScreen extends StatelessWidget {
                 ),
               const SizedBox(height: 24),
 
-              // 가입 버튼
+              // ── 가입 버튼 ──
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: ctrl.isLoading ? null : () => ctrl.signup(context),
+                  onPressed:
+                      ctrl.isLoading ? null : () => ctrl.signup(context),
                   child: ctrl.isLoading
                       ? const SizedBox(
                           height: 24,

@@ -12,7 +12,13 @@ public class CustomServletConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry
-                .addResourceHandler("/files/**") // 요청 경로 매핑
-                .addResourceLocations("classpath:/static/"); // 실제 리소스 위치
+                .addResourceHandler("/files/**")
+                .addResourceLocations("classpath:/static/");
+
+        // 프로필 이미지 업로드 파일 서빙
+        // /upload/{파일명} 요청 → c:/upload/springTest/ 폴더에서 파일 반환
+        registry
+                .addResourceHandler("/upload/**")
+                .addResourceLocations("file:c:/upload/springTest/");
     }
 }

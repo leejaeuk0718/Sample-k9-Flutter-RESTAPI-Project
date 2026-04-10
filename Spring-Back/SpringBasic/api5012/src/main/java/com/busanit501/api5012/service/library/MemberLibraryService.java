@@ -3,6 +3,8 @@ package com.busanit501.api5012.service.library;
 import com.busanit501.api5012.dto.library.MemberDTO;
 import com.busanit501.api5012.dto.library.MemberSignupDTO;
 
+import java.util.List;
+
 /**
  * MemberLibraryService - 도서관 회원 서비스 인터페이스
  *
@@ -85,4 +87,11 @@ public interface MemberLibraryService {
      * @return 중복이면 true, 사용 가능하면 false
      */
     boolean checkDuplicateEmail(String email);
+
+    /**
+     * getAllMembers - 전체 회원 목록 조회 (관리자 전용)
+     *
+     * @return 전체 회원 DTO 목록
+     */
+    List<MemberDTO> getAllMembers();
 }

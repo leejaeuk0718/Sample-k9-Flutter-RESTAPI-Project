@@ -65,4 +65,12 @@ public class MemberSignupDTO {
      * 예: "부산광역시 남구"
      */
     private String region;
+
+    /**
+     * profileImageBase64 - 프로필 이미지 (base64 인코딩)
+     * 선택 사항입니다. null 이면 프로필 이미지 없이 가입합니다.
+     * 서버에서 디코딩 후 c:/upload/springTest 폴더에 UUID 파일명으로 저장합니다.
+     * 최대 허용 크기: 5MB (클라이언트에서 1차 검사, 서버에서 2차 검사)
+     */
+    private String profileImageBase64;
 }

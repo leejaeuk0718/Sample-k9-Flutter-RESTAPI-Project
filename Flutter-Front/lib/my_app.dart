@@ -29,6 +29,16 @@ import 'screen/todos/todo_detail_screen.dart';
 // AI
 import 'screen/ai/image/ai_image_screen.dart';
 import 'screen/ai/stock/ai_stock_screen.dart';
+// 내 정보 수정
+import 'screen/mypage/edit_profile_screen.dart';
+// 관리자
+import 'screen/admin/admin_dashboard_screen.dart';
+import 'screen/admin/admin_book_screen.dart';
+import 'screen/admin/admin_member_screen.dart';
+import 'screen/admin/admin_event_screen.dart';
+import 'screen/admin/admin_notice_screen.dart';
+import 'screen/admin/admin_inquiry_screen.dart';
+import 'screen/admin/admin_facility_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -94,6 +104,18 @@ class MyApp extends StatelessWidget {
         // ── AI
         '/ai-image': (_) => AiImageScreen(),
         '/ai-stock': (_) => AiStockScreen(),
+
+        // ── 내 정보 수정
+        '/editProfile': (_) => const EditProfileScreen(),
+
+        // ── 관리자
+        '/admin': (_) => const AdminDashboardScreen(),
+        '/adminBook': (_) => const AdminBookScreen(),
+        '/adminMember': (_) => const AdminMemberScreen(),
+        '/adminEvent': (_) => const AdminEventScreen(),
+        '/adminNotice': (_) => const AdminNoticeScreen(),
+        '/adminInquiry': (_) => const AdminInquiryScreen(),
+        '/adminFacility': (_) => const AdminFacilityScreen(),
       },
     );
   }

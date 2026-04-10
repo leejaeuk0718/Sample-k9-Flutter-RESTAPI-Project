@@ -22,6 +22,7 @@ class LoginController extends ChangeNotifier {
   String? memberRegion;
   String? memberRole;
   String? memberRegDate;
+  String? memberProfileImage; // 프로필 이미지 UUID 파일명
   String? currentMid; // SecureStorage에서 읽은 mid
 
   LoginController() {
@@ -136,6 +137,7 @@ class LoginController extends ChangeNotifier {
     memberEmail = md['email'];
     memberRegion = md['region'];
     memberRole = md['role']?.toString();
+    memberProfileImage = md['profileImg'] as String?;
     memberRegDate = md['regDate'] != null
         ? (md['regDate'] as String).substring(0, 10)
         : null;
@@ -178,6 +180,7 @@ class LoginController extends ChangeNotifier {
     memberRegion = null;
     memberRole = null;
     memberRegDate = null;
+    memberProfileImage = null;
     notifyListeners();
 
     if (!context.mounted) return;

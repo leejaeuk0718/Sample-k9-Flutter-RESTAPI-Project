@@ -11,6 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
+
 /**
  * MemberLibraryServiceImpl - 도서관 회원 서비스 구현체
  *
@@ -30,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // 기본: 읽기 전용 (변경 메서드에서 개별 @Transactional 사용)
 public class MemberLibraryServiceImpl implements MemberLibraryService {
+
+    /** 프로필 이미지 저장 경로 */
+    private static final String UPLOAD_DIR = "c:/upload/springTest/";
 
     /** MemberRepository - 회원 엔티티에 대한 DB 접근 */
     private final MemberRepository memberRepository;
@@ -78,7 +87,14 @@ public class MemberLibraryServiceImpl implements MemberLibraryService {
         String encodedPassword = passwordEncoder.encode(dto.getMpw());
         log.debug("비밀번호 BCrypt 암호화 완료");
 
-        // 5단계: Member 엔티티 생성 (@Builder 패턴 사용)
+        // 5단계: 프로필 이미지 처리 (base64 → 파일 저장)
+        String savedFileName = null;
+        if (dto.getProfileImageBase64() != null && !dto.getProfileImageBase64().isBlank()) {
+            savedFileName = saveBase64Image(dto.getProfileImageBase64());
+            log.info("프로필 이미지 저장 완료 - 파일명: {}", savedFileName);
+        }
+
+        // 6단계: Member 엔티티 생성 (@Builder 패턴 사용)
         Member member = Member.builder()
                 .mid(dto.getMid())
                 .mpw(encodedPassword)       // 암호화된 비밀번호 저장
@@ -86,13 +102,68 @@ public class MemberLibraryServiceImpl implements MemberLibraryService {
                 .email(dto.getEmail())
                 .region(dto.getRegion())
                 .role(MemberRole.USER)       // 기본 권한: 일반 회원
+                .profileImg(savedFileName)   // UUID 파일명 저장 (없으면 null)
                 .build();
 
-        // 6단계: DB 저장 후 생성된 기본키(id) 반환
+        // 7단계: DB 저장 후 생성된 기본키(id) 반환
         Long savedId = memberRepository.save(member).getId();
         log.info("회원가입 완료 - memberId: {}, mid: {}", savedId, dto.getMid());
 
         return savedId;
+    }
+
+    /**
+     * saveBase64Image - base64 인코딩된 이미지를 파일로 저장
+     *
+     * 1. base64 데이터에서 헤더 제거 (data:image/jpeg;base64, 형식인 경우)
+     * 2. 5MB 크기 제한 검사
+     * 3. UUID 파일명 생성 후 UPLOAD_DIR 에 저장
+     *
+     * @param base64Data base64 인코딩 이미지 데이터
+     * @return 저장된 UUID 파일명 (예: "550e8400-e29b-41d4-a716-446655440000.jpg")
+     */
+    private String saveBase64Image(String base64Data) {
+        try {
+            // base64 헤더 제거 (data:image/jpeg;base64, 형식 처리)
+            String extension = "jpg";
+            String pureBase64 = base64Data;
+            if (base64Data.contains(",")) {
+                String header = base64Data.substring(0, base64Data.indexOf(","));
+                pureBase64 = base64Data.substring(base64Data.indexOf(",") + 1);
+                // 확장자 추출
+                if (header.contains("png")) extension = "png";
+                else if (header.contains("gif")) extension = "gif";
+                else if (header.contains("webp")) extension = "webp";
+            }
+
+            byte[] imageBytes = Base64.getDecoder().decode(pureBase64);
+
+            // 5MB (5,242,880 bytes) 크기 제한
+            if (imageBytes.length > 5 * 1024 * 1024) {
+                throw new IllegalArgumentException("이미지 파일 크기는 5MB 이하여야 합니다.");
+            }
+
+            // 저장 디렉토리 생성 (없으면 자동 생성)
+            File dir = new File(UPLOAD_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // UUID 파일명 생성 및 저장
+            String fileName = UUID.randomUUID() + "." + extension;
+            File outputFile = new File(UPLOAD_DIR + fileName);
+            try (FileOutputStream fos = new FileOutputStream(outputFile)) {
+                fos.write(imageBytes);
+            }
+
+            return fileName;
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("프로필 이미지 저장 실패: {}", e.getMessage());
+            throw new RuntimeException("프로필 이미지 저장 중 오류가 발생했습니다.");
+        }
     }
 
     /**
@@ -190,5 +261,17 @@ public class MemberLibraryServiceImpl implements MemberLibraryService {
         boolean isDuplicate = memberRepository.existsByEmail(email);
         log.debug("이메일 중복 체크 - email: {}, 중복여부: {}", email, isDuplicate);
         return isDuplicate;
+    }
+
+    /**
+     * getAllMembers - 전체 회원 목록 조회 (관리자 전용)
+     */
+    @Override
+    public List<MemberDTO> getAllMembers() {
+        log.info("전체 회원 목록 조회 (관리자)");
+        return memberRepository.findAll()
+                .stream()
+                .map(MemberDTO::fromEntity)
+                .toList();
     }
 }

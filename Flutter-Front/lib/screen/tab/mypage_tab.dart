@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../const/api_constants.dart';
 import '../../controller/auth/login_controller.dart';
 import '../../widget/common/loading_widget.dart';
 
 /// 마이페이지 탭
+/// - 프로필 이미지 표시 (업로드된 경우 NetworkImage, 없으면 이니셜)
 /// - 회원 정보 카드 (이름, 이메일, 지역, 가입일)
+/// - 내 정보 수정 버튼
+/// - 관리자 대시보드 버튼 (ADMIN 역할일 때만 표시)
 /// - 바로가기 메뉴 (대여내역, 문의내역, 시설예약)
 /// - 로그아웃
 class MyPageTab extends StatefulWidget {
@@ -27,12 +31,7 @@ class _MyPageTabState extends State<MyPageTab> {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<LoginController>();
-    // [확인용 코드 추가] 콘솔창(Run 탭)에서 아래 로그가 어떻게 찍히는지 보세요.
-    print('--- 마이페이지 데이터 확인 ---');
-    print('이름: ${ctrl.memberName}');
-    print('이메일: ${ctrl.memberEmail}');
-    print('지역: ${ctrl.memberRegion}');
-    print('로딩상태: ${ctrl.isMemberInfoLoading}');
+    final bool isAdmin = ctrl.memberRole == 'ADMIN';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -48,58 +47,53 @@ class _MyPageTabState extends State<MyPageTab> {
                 ? const SizedBox(
                     height: 80,
                     child: LoadingWidget(message: '회원 정보 불러오는 중...'))
-                : Row(
+                : Column(
                     children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor:
-                            Theme.of(context).primaryColor.withOpacity(0.15),
-                        child: Text(
-                          _initial(ctrl.memberName ?? ctrl.currentMid),
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor),
-                        ),
+                      // 프로필 이미지
+                      _buildProfileAvatar(ctrl, context),
+                      const SizedBox(height: 12),
+                      // 이름
+                      Text(
+                        ctrl.memberName ?? ctrl.currentMid ?? '회원',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      if (ctrl.memberEmail != null) ...[
+                        const SizedBox(height: 4),
+                        Text(ctrl.memberEmail!,
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 13)),
+                      ],
+                      if (ctrl.memberRegion != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              ctrl.memberName ?? ctrl.currentMid ?? '회원',
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            if (ctrl.memberEmail != null) ...[
-                              const SizedBox(height: 4),
-                              Text(ctrl.memberEmail!,
-                                  style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 13)),
-                            ],
-                            if (ctrl.memberRegion != null) ...[
-                              const SizedBox(height: 2),
-                              Row(children: [
-                                Icon(Icons.location_on_outlined,
-                                    size: 13, color: Colors.grey[500]),
-                                const SizedBox(width: 2),
-                                Text(ctrl.memberRegion!,
-                                    style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 12)),
-                              ]),
-                            ],
-                            if (ctrl.memberRegDate != null) ...[
-                              const SizedBox(height: 2),
-                              Text('가입일: ${ctrl.memberRegDate}',
-                                  style: TextStyle(
-                                      color: Colors.grey[400],
-                                      fontSize: 11)),
-                            ],
+                            Icon(Icons.location_on_outlined,
+                                size: 13, color: Colors.grey[500]),
+                            const SizedBox(width: 2),
+                            Text(ctrl.memberRegion!,
+                                style: TextStyle(
+                                    color: Colors.grey[500], fontSize: 12)),
                           ],
+                        ),
+                      ],
+                      if (ctrl.memberRegDate != null) ...[
+                        const SizedBox(height: 2),
+                        Text('가입일: ${ctrl.memberRegDate}',
+                            style: TextStyle(
+                                color: Colors.grey[400], fontSize: 11)),
+                      ],
+                      const SizedBox(height: 12),
+                      // 내 정보 수정 버튼
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/editProfile')
+                                  .then((_) => ctrl.loadMemberInfo()),
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('내 정보 수정'),
                         ),
                       ),
                     ],
@@ -107,10 +101,34 @@ class _MyPageTabState extends State<MyPageTab> {
           ),
         ),
 
+        // ── 관리자 대시보드 버튼 (ADMIN 전용) ──────────
+        if (isAdmin) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: Colors.indigo[50],
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Colors.indigo,
+                child: Icon(Icons.admin_panel_settings,
+                    color: Colors.white, size: 20),
+              ),
+              title: const Text('관리자 대시보드',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.indigo)),
+              subtitle: const Text('도서/회원/이벤트/공지 등 관리',
+                  style: TextStyle(fontSize: 12)),
+              trailing:
+                  const Icon(Icons.chevron_right, color: Colors.indigo),
+              onTap: () => Navigator.pushNamed(context, '/admin'),
+            ),
+          ),
+        ],
+
         const SizedBox(height: 20),
         const Text('바로가기',
-            style:
-                TextStyle(fontSize: 14, color: Colors.grey)),
+            style: TextStyle(fontSize: 14, color: Colors.grey)),
         const SizedBox(height: 8),
 
         // ── 바로가기 메뉴 ──────────────────────────────
@@ -141,14 +159,47 @@ class _MyPageTabState extends State<MyPageTab> {
 
         // ── 로그아웃 ──────────────────────────────────
         ListTile(
-          leading:
-              const CircleAvatar(backgroundColor: Colors.red, radius: 20,
-                  child: Icon(Icons.logout, color: Colors.white, size: 18)),
+          leading: const CircleAvatar(
+              backgroundColor: Colors.red,
+              radius: 20,
+              child: Icon(Icons.logout, color: Colors.white, size: 18)),
           title: const Text('로그아웃',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+              style:
+                  TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
           onTap: () => ctrl.showLogoutDialog(context),
         ),
       ],
+    );
+  }
+
+  Widget _buildProfileAvatar(LoginController ctrl, BuildContext context) {
+    final profileImg = ctrl.memberProfileImage;
+    final initial = _initial(ctrl.memberName ?? ctrl.currentMid);
+
+    if (profileImg != null && profileImg.isNotEmpty) {
+      // 서버에서 업로드된 이미지 표시
+      final imageUrl =
+          '${ApiConstants.springBaseUrl.replaceAll('/api', '')}/upload/$profileImg';
+      return CircleAvatar(
+        radius: 45,
+        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (_, __) {},
+        child: null,
+      );
+    }
+
+    // 프로필 이미지 없으면 이니셜 표시
+    return CircleAvatar(
+      radius: 45,
+      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
+      child: Text(
+        initial,
+        style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).primaryColor),
+      ),
     );
   }
 
@@ -183,11 +234,11 @@ class _MenuTile extends StatelessWidget {
           backgroundColor: color.withOpacity(0.12),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        title:
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(subtitle,
             style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        trailing:
-            const Icon(Icons.chevron_right, color: Colors.grey),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,
       ),
     );
