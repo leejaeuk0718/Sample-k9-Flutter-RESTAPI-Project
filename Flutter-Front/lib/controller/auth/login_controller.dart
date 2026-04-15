@@ -1,16 +1,19 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
+import '../../const/api_constants.dart';
 
 class LoginController extends ChangeNotifier {
   final TextEditingController idController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
-  final String serverIp = 'http://10.0.2.2:8080';
 
   bool isLoading = false;
   bool isLoggedIn = false;
@@ -44,7 +47,7 @@ class LoginController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$serverIp/generateToken'),
+        Uri.parse('${ApiConstants.springBaseUrl2}/generateToken'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'mid': inputId, 'mpw': inputPw}),
       );
@@ -73,7 +76,7 @@ class LoginController extends ChangeNotifier {
         // 도서관 회원 ID + 상세 정보 조회
         try {
           final memberRes = await http.get(
-            Uri.parse('$serverIp/api/member/me?mid=$inputId'),
+            Uri.parse('${ApiConstants.springBaseUrl2}/api/member/me?mid=$inputId'),
             headers: {'Authorization': 'Bearer $accessToken'},
           );
           if (memberRes.statusCode == 200) {
@@ -115,7 +118,8 @@ class LoginController extends ChangeNotifier {
 
     try {
       final res = await http.get(
-        Uri.parse('$serverIp/api/member/me?mid=$mid'),
+
+        Uri.parse('${ApiConstants.springBaseUrl2}/api/member/me?mid=$mid'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (res.statusCode == 200) {
